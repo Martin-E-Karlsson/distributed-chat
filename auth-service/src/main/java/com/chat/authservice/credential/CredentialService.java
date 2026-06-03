@@ -3,6 +3,8 @@ package com.chat.authservice.credential;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class CredentialService {
 
@@ -24,8 +26,11 @@ public class CredentialService {
     }
 
     public boolean verify(String username, String rawPassword) {
+        return authenticate(username, rawPassword).isPresent();
+    }
+
+    public Optional<Credential> authenticate(String username, String rawPassword) {
         return credentialRepository.findByUsername(username)
-                .map(credential -> passwordEncoder.matches(rawPassword, credential.getPasswordHash()))
-                .orElse(false);
+                .filter( credential -> passwordEncoder.matches(rawPassword, credential.getPasswordHash()));
     }
 }

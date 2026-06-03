@@ -72,4 +72,23 @@ class CredentialServiceTest {
 
         assertThat(credentialService.verify("ghost", "whatever")).isFalse();
     }
+
+    @Test
+    void authenticateReturnsCredentialForValidLogin() {
+        String hashedPassword = passwordEncoder.encode("s3cret");
+        when(credentialRepository.findByUsername("test_king"))
+                .thenReturn(Optional.of(new Credential(1L, "test_king", hashedPassword)));
+
+        assertThat(credentialService.authenticate("test_king", "s3cret"))
+                .map(Credential::getId).contains(1L);
+    }
+
+    @Test
+    void authenticateReturnsEmptyForInvalidLogin() {
+        String hashedPassword = passwordEncoder.encode("s3cret");
+        when(credentialRepository.findByUsername("test_king"))
+                .thenReturn(Optional.of(new Credential(1L, "test_king", hashedPassword)));
+
+        assertThat(credentialService.authenticate("test_king", "wrong")).isEmpty();
+    }
 }
