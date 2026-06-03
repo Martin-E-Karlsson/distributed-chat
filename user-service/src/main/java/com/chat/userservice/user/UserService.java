@@ -12,6 +12,14 @@ public class UserService {
     }
 
     public User create(String username, String displayname) {
+        if (userRepository.existsByUsername(username)) {
+            throw new DuplicateUsernameException(username);
+        }
         return userRepository.save(new User(null, username, displayname));
+    }
+
+    public User getById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
     }
 }
