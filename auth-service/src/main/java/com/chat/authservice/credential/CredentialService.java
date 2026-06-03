@@ -22,4 +22,10 @@ public class CredentialService {
         String passwordHash = passwordEncoder.encode(rawPassword);
         return credentialRepository.save(new Credential(null, username, passwordHash));
     }
+
+    public boolean verify(String username, String rawPassword) {
+        return credentialRepository.findByUsername(username)
+                .map(credential -> passwordEncoder.matches(rawPassword, credential.getPasswordHash()))
+                .orElse(false);
+    }
 }

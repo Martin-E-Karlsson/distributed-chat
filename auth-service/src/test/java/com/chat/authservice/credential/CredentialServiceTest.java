@@ -13,6 +13,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+
 class CredentialServiceTest {
 
     private final CredentialRepository credentialRepository = mock(CredentialRepository.class);
@@ -44,5 +46,30 @@ class CredentialServiceTest {
                 .isInstanceOf(DuplicateUsernameException.class);
 
         verify(credentialRepository, never()).save(any());
+    }
+
+    @Test
+    void verifyReturnsTrueForCorrectPassword() {
+        String hashedPassword = passwordEncoder.encode("s3cret");
+        when(credentialRepository.findByUsername("test_king"))
+                .thenReturn(Optional.of(new Credential(1L, "test_king", hashedPassword)));
+
+        assertThat(credentialService.verify("test_king", "s3cret")).isTrue();
+    }
+
+    @Test
+    void verifyReturnsFalseForWrongPassword() {
+        String hashedPassword = passwordEncoder.encode("s3cret");
+        when(credentialRepository.findByUsername("test_king"))
+                .thenReturn(Optional.of((new Credential(1L, "test_king", hashedPassword))));
+
+        assertThat(credentialService.verify("test_king", "wrong")).isFalse();
+    }
+
+    @Test
+    void verifyReturnsFalseForUnknownUser() {
+        when(credentialRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThat(credentialService.verify("ghost", "whatever")).isFalse();
     }
 }
