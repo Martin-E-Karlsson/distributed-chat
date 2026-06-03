@@ -1,6 +1,5 @@
 package com.chat.authservice.auth;
 
-import jakarta.security.auth.message.AuthException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -9,6 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.json.JsonMapper;
+import com.chat.authservice.credential.Credential;
+import com.chat.authservice.credential.CredentialService;
+import com.chat.authservice.credential.DuplicateUsernameException;
 
 import com.chat.authservice.config.SecurityConfig;
 
@@ -29,6 +31,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private CredentialService credentialService;
 
     @Test
     void loginReturns200AndToken() throws Exception {
@@ -52,5 +57,31 @@ class AuthControllerTest {
                         .content(jsonMapper.writeValueAsString(
                                 new LoginRequest("test_king", "wrong"))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void registerReturns201AndBody() throws Exception {
+        when(credentialService.register("test_king", "s3cret"))
+                .thenReturn(new Credential(1L, "test_king", "hash"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(
+                                new RegisterRequest("test_king", "s3cret"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("test_king"));
+    }
+
+    @Test
+    void registerReturns409ForDuplicate() throws Exception {
+        when(credentialService.register("test_king", "s3cret"))
+                .thenThrow(new DuplicateUsernameException("test_king"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(
+                                new RegisterRequest("test_king", "s3cret"))))
+                .andExpect(status().isConflict());
     }
 }
