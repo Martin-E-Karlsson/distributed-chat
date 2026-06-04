@@ -10,6 +10,7 @@ public class UserProfileClient {
 
     private final UserProfileServiceGrpc.UserProfileServiceBlockingStub stub;
 
+    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     public UserProfileClient(UserProfileServiceGrpc.UserProfileServiceBlockingStub stub) {
         this.stub = stub;
     }
