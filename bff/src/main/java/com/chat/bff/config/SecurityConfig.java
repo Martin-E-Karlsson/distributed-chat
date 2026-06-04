@@ -22,6 +22,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/", "/index.html").permitAll()
                         .requestMatchers("/api/users", "/api/auth/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oath2 -> oath2.jwt(Customizer.withDefaults()))
