@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed Chat</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+        h1 { margin-bottom: 0.25rem; }
+        .status { font-size: 0.9rem; color: #555; margin-bottom: 1.5rem; }
+        .status.authed { color: #137333; font-weight: 600; }
+        fieldset { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 1rem; padding: 1rem; }
+        legend { font-weight: 600; padding: 0 0.5rem; }
+        input { padding: 0.5rem; margin: 0.25rem 0.25rem 0.25rem 0; border: 1px solid #ccc; border-radius: 6px; }
+        button { padding: 0.5rem 0.9rem; border: 0; border-radius: 6px; background: #1a73e8; color: #fff; cursor: pointer; }
+        button:hover { background: #1558b0; }
+        #messages { list-style: none; padding: 0; }
+        #messages li { padding: 0.5rem 0.75rem; border-bottom: 1px solid #eee; }
+        #messages .who { font-weight: 600; }
+        #messages .when { color: #888; font-size: 0.8rem; }
+        #log { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 0.5rem 0.75rem; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; min-height: 2.5rem; }
+    </style>
+</head>
+<body>
+    <h1>Distributed Chat</h1>
+    <div id="status" class="status">Not logged in.</div>
+
+    <fieldset>
+        <legend>1. Create user</legend>
+        <input id="regUsername" placeholder="username">
+        <input id="regPassword" type="password" placeholder="password">
+        <input id="regDisplayname" placeholder="display name">
+        <button onclick="register()">Create user</button>
+    </fieldset>
+
+    <fieldset>
+        <legend>2. Log in</legend>
+        <input id="loginUsername" placeholder="username">
+        <input id="loginPassword" type="password" placeholder="password">
+        <button onclick="login()">Log in</button>
+    </fieldset>
+
+    <fieldset>
+        <legend>3. Send a message</legend>
+        <input id="messageContent" placeholder="your message" size="40">
+        <button onclick="sendMessage()">Send</button>
+    </fieldset>
+
+    <fieldset>
+        <legend>4. Messages</legend>
+        <button onclick="loadMessages()">Refresh</button>
+        <ul id="messages"></ul>
+    </fieldset>
+
+    <div id="log">Ready.</div>
+
+    <script>
+        // The BFF serves this page, so the API is same-origin: relative URLs just work.
+        let token = null;
+
+        function log(message) {
+            document.getElementById('log').textContent = message;
+        }
+
+        function setStatus(text, authed) {
+            const el = document.getElementById('status');
+            el.textContent = text;
+            el.className = 'status' + (authed ? ' authed' : '');
+        }
+
+        async function register() {
+            const body = {
+                username: document.getElementById('regUsername').value,
+                password: document.getElementById('regPassword').value,
+                displayname: document.getElementById('regDisplayname').value
+            };
+            const res = await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                const user = await res.json();
+                log('User created: id=' + user.id + ', username=' + user.username);
+            } else {
+                log('Create user failed: HTTP ' + res.status);
+            }
+        }
+
+        async function login() {
+            const body = {
+                username: document.getElementById('loginUsername').value,
+                password: document.getElementById('loginPassword').value
+            };
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                const data = await res.json();
+                token = data.token;
+                setStatus('Logged in. Token stored.', true);
+                log('Login OK. JWT received.');
+            } else {
+                token = null;
+                setStatus('Not logged in.', false);
+                log('Login failed: HTTP ' + res.status);
+            }
+        }
+
+        function authHeaders() {
+            return token
+                ? { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+                : { 'Content-Type': 'application/json' };
+        }
+
+        async function sendMessage() {
+            if (!token) { log('Please log in first.'); return; }
+            const body = { content: document.getElementById('messageContent').value };
+            const res = await fetch('/api/messages', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                document.getElementById('messageContent').value = '';
+                log('Message sent.');
+                loadMessages();
+            } else {
+                log('Send failed: HTTP ' + res.status);
+            }
+        }
+
+        async function loadMessages() {
+            if (!token) { log('Please log in first.'); return; }
+            const res = await fetch('/api/messages', { headers: authHeaders() });
+            if (!res.ok) { log('Load failed: HTTP ' + res.status); return; }
+            const messages = await res.json();
+            const list = document.getElementById('messages');
+            list.innerHTML = '';
+            for (const m of messages) {
+                const li = document.createElement('li');
+                const who = m.senderUsername || ('user ' + m.senderId);
+                li.innerHTML = '<span class="who"></span>: <span class="text"></span> <span class="when"></span>';
+                li.querySelector('.who').textContent = who;
+                li.querySelector('.text').textContent = m.content;
+                li.querySelector('.when').textContent = m.createdAt || '';
+                list.appendChild(li);
+            }
+            log('Loaded ' + messages.length + ' message(s).');
+        }
+    </script>
+</body>
+</html>
