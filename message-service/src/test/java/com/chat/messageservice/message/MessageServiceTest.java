@@ -15,7 +15,8 @@ import static org.mockito.Mockito.when;
 class MessageServiceTest {
 
     private final MessageRepository messageRepository = mock(MessageRepository.class);
-    private final MessageService messageService = new MessageService(messageRepository);
+    private final MessageEventPublisher eventPublisher = mock(MessageEventPublisher.class);
+    private final MessageService messageService = new MessageService(messageRepository, eventPublisher);
 
     @Test
     void createSavesMessageWithSenderContentAndTimestamp() {
@@ -39,5 +40,22 @@ class MessageServiceTest {
         when(messageRepository.findAllByOrderByCreatedAtDesc()).thenReturn(messages);
 
         assertThat(messageService.findAll()).isEqualTo(messages);
+    }
+
+    @Test
+    void createPublishesMessagePublishedEvent() {
+        when(messageRepository.save(any(Message.class)))
+                .thenReturn(new Message(7L, 42L, "Hello", Instant.parse("2026-01-01T00:00:00Z")));
+
+        messageService.create(42L, "Hello");
+
+        ArgumentCaptor<MessagePublishedEvent> captor =
+                ArgumentCaptor.forClass(MessagePublishedEvent.class);
+        verify(eventPublisher).publish(captor.capture());
+        MessagePublishedEvent event = captor.getValue();
+
+        assertThat(event.messageId()).isEqualTo(7L);
+        assertThat(event.senderId()).isEqualTo(42L);
+        assertThat(event.content()).isEqualTo("Hello");
     }
 }
