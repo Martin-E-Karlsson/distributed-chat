@@ -21,4 +21,13 @@ public class AuthClient {
                 .retrieve()
                 .body(TokenResponse.class);
     }
+
+    public void register(String username, String password) {
+        authRestClient.post()
+                .uri("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new Credentials(username, password))
+                .retrieve()
+                .toBodilessEntity();
+    }
 }
