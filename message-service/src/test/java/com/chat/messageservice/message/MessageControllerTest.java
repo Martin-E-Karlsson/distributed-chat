@@ -29,6 +29,9 @@ class MessageControllerTest {
     @MockitoBean
     private MessageService messageService;
 
+    @MockitoBean
+    private MessageQueryService messageQueryService;
+
     @Test
     void postMessageReturns201AndBody() throws Exception {
         when(messageService.create(42L, "Hello"))
@@ -45,13 +48,15 @@ class MessageControllerTest {
     }
 
     @Test
-    void getMessagesReturnsList() throws Exception {
-        when(messageService.findAll())
-                .thenReturn(List.of(new Message(1L, 42L, "Hello", Instant.parse("2026-01-01T00:00:00Z"))));
+    void getMessagesReturnsListWithSenderUsername() throws Exception {
+        Message message = new Message(1L, 42L, "Hello", Instant.parse("2026-01-01T00:00:00Z"));
+        when(messageQueryService.findAllWithSender())
+                .thenReturn(List.of(new MessageWithSender(message, "test_king")));
 
         mockMvc.perform(get("/messages"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].content").value("Hello"));
+                .andExpect(jsonPath("$[0].content").value("Hello"))
+                .andExpect(jsonPath("$[0].senderUsername").value("test_king"));
     }
 }

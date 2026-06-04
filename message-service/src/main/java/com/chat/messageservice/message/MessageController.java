@@ -16,9 +16,11 @@ import java.util.List;
 public class MessageController {
 
     private final MessageService messageService;
+    private final MessageQueryService messageQueryService;
 
-    public MessageController(MessageService messageService) {
+    public MessageController(MessageService messageService, MessageQueryService messageQueryService) {
         this.messageService = messageService;
+        this.messageQueryService = messageQueryService;
     }
 
     @PostMapping
@@ -29,7 +31,7 @@ public class MessageController {
 
     @GetMapping
     public List<MessageResponse> all() {
-        return messageService.findAll().stream()
+        return messageQueryService.findAllWithSender().stream()
                 .map(MessageResponse::from)
                 .toList();
     }
